@@ -252,14 +252,35 @@ kubectl rollout status daemonset/filebeat -n logging --timeout=180s
 
 ## Диагностика
 
+git clone https://github.com/timur0o31/k8s-task.git
+
 ```bash
+git clone https://github.com/timur0o31/k8s-task.git
+cd k8s-task
+sudo swapoff -a
+git switch master
+bash scripts/prepare.sh
+kubectl wait --for=condition=Ready node --all --timeout=180s
+bash scripts/deploy-app.sh
 kubectl get nodes
-kubectl get pods -A
-kubectl get gateway,httproute -n nginx
-kubectl describe gateway web-gateway -n nginx
-kubectl get pv prometheus-data
-kubectl get pvc prometheus-data -n monitoring
-kubectl logs -n nginx deployment/nginx-deployment --tail=30
-kubectl logs -n monitoring deployment/prometheus -c prometheus --tail=30
-kubectl logs -n logging daemonset/filebeat --tail=30
+```
+Метрики 
+```bash
+kubectl exec -n nginx deployment/nginx-deployment -- \
+  curl -fsS -G --max-time 10 \
+  http://prometheus.monitoring.svc.cluster.local:9090/api/v1/query \
+  --data-urlencode 'query=up{job="nginx-gateway"}'
+```
+проверка успешного запроса и логов
+```bash
+CHECK="fresh-install-$(date +%s)"
+curl -fsS -i --max-time 10 \
+  "http://10.0.2.15:32085/?check=${CHECK}"
+sudo grep -F "$CHECK" /var/log/k8s-task/filebeat/nginx*
+```
+Проверка ошибок
+```bash
+curl -sS -i --max-time 10 \
+  "http://10.0.2.15:32085/missing-${CHECK}"
+sudo grep -F "missing-${CHECK}" /var/log/k8s-task/filebeat/nginx*
 ```
