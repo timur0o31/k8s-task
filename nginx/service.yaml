@@ -5,9 +5,9 @@ metadata:
   namespace: nginx
 spec:
   type: ClusterIP
-  selector: 
+  selector:
     app: nginx
-  ports: 
+  ports:
     - name: http
       port: 80
       targetPort: 80

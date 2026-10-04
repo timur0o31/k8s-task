@@ -18,7 +18,7 @@ metadata:
   namespace: nginx
 data:
   index.html: |
-    Hello World!
+    Hello world!
   default.conf: |
     server {
       listen 80;
@@ -93,3 +93,4 @@ spec:
       targetPort: 80
 EOF
 kubectl apply -f nginx/service.yaml
+kubectl rollout status deployment/nginx-deployment -n nginx --timeout=180s

@@ -29,13 +29,12 @@ spec:
         - name: html
           configMap:
             name: nginx-files
-            items: 
+            items:
               - key: index.html
-                path:   index.html
+                path: index.html
         - name: config
           configMap:
             name: nginx-files
             items:
               - key: default.conf
                 path: default.conf
-
