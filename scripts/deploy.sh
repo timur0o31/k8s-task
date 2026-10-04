@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-mkdir -p k8s-task/kubernetes
-touch k8s-task/kubernetes/namespace.yaml
-mkdir -p k8s-task/nginx
-cat > k8s-task/kubernetes/namespace.yaml << "EOF"
+set -eou pipefail
+mkdir -p kubernetes nginx
+touch kubernetes/namespace.yaml
+cat > kubernetes/namespace.yaml << "EOF"
 apiVersion: v1
 kind: Namespace
 metadata:
   name: nginx
 EOF
-touch k8s-task/kubernetes/deployment.yaml
-touch k8s-task/nginx/configmap.yaml
-cat > k8s-task/nginx/configmap.yaml << "EOF"
+
+touch nginx/deployment.yaml
+cat > nginx/configmap.yaml << "EOF"
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -19,9 +19,20 @@ metadata:
 data:
   index.html: |
     Hello World!
+  default.conf: |
+    server {
+      listen 80;
+      server_name _;
+      root /usr/share/nginx/html;
+      index index.html;
+      access_log /dev/stdout combined;
+      error_log /dev/stderr warn;
+      location / {
+      }
+    }
 EOF
-cat > k8s-task/kubernetes/deployment.yaml << "EOF"
-apiVersion: app/v1
+cat > nginx/deployment.yaml << "EOF"
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-deployment
@@ -41,16 +52,44 @@ spec:
           image: nginx:1.30.5
           ports:
             - containerPort: 80
-      volumeMounts:
-        - name: html
-          mountPath: /usr/share/nginx/html
-          readOnly: true
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+            - name: config
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
       volumes:
         - name: html
           configMap:
             name: nginx-files
+            items:
+              - key: index.html
+                path: index.html
+        - name: config
+          configMap:
+            name: nginx-files
+            items:
+              - key: default.conf
+                path: default.conf
 EOF
-kubectl apply -f k8s-task/kubernetes/namespace.yaml
-kubectl apply -f k8s-task/nginx/configmap.yaml
-kubectl apply -f k8s-task/nginx/deployment.yaml
-
+kubectl apply -f kubernetes/namespace.yaml
+kubectl apply -f nginx/configmap.yaml
+kubectl apply -f nginx/deployment.yaml
+touch nginx/service.yaml
+cat > nginx/service.yaml << EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: nginx
+spec:
+  type: ClusterIP
+  selector:
+    app: nginx
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+EOF
+kubectl apply -f nginx/service.yaml

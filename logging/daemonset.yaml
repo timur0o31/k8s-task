@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: logging
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    metadata:
+      labels:
+        app: filebeat
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: filebeat
+          image: docker.elastic.co/beats/filebeat:9.5.4
+          args:
+            - -e
+            - -c
+            - /etc/filebeat/filebeat.yml
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/filebeat/filebeat.yml
+              subPath: filebeat.yml
+              readOnly: true
+            - name: logs
+              mountPath: /var/log
+              readOnly: true
+            - name: data
+              mountPath: /usr/share/filebeat/data
+            - name: collected
+              mountPath: /collected-logs
+
+      volumes:
+        - name: config
+          configMap:
+            name: filebeat-config
+        - name: logs
+          hostPath:
+            path: /var/log
+            type: Directory
+        - name: data
+          hostPath:
+            path: /var/lib/k8s-task/filebeat
+            type: DirectoryOrCreate
+        - name: collected
+          hostPath:
+            path: /var/log/k8s-task/filebeat
+            type: DirectoryOrCreate

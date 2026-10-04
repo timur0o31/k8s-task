@@ -3,7 +3,8 @@
 set -euo pipefail
 sudo apt-get update
 sudo apt-get install -y apt-transport-https ca-certificates curl gpg
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.37/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.37/deb/Release.key | sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.37/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 sudo apt-get update
 sudo apt-get install -y kubelet kubeadm kubectl
@@ -27,15 +28,22 @@ net.ipv4.ip_forward = 1
 net.bridge.bridge-nf-call-iptables = 1
 EOF
 sudo sysctl -p /etc/sysctl.d/k8s.conf
+if sudo test -f /etc/kubernetes/admin.conf; then
+  echo "Кластер уже инициализирован"
+else
 sudo kubeadm init \
   --kubernetes-version=v1.37.1 \
-  --apiserver-advertise-address=10.0.2.15 \
   --pod-network-cidr=10.244.0.0/16 \
   --cri-socket=unix:///run/containerd/containerd.sock
-
+fi
 mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
+chmod 600 "$HOME/.kube/config"
 kubectl apply -f https://github.com/flannel-io/flannel/releases/download/v0.28.9/kube-flannel.yml
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+CONTROL_PLANE_TAINT="$(kubectl get nodes \
+  -o jsonpath='{.items[*].spec.taints[?(@.key=="node-role.kubernetes.io/control-plane")].key}')"
+
+if [[ -n "$CONTROL_PLANE_TAINT" ]]; then
+  kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+fi

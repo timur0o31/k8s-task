@@ -6,3 +6,14 @@ metadata:
 data:
   index.html: |
     Hello world!
+  default.conf: |
+    server {
+      listen 80;
+      server_name _;
+      root /usr/share/nginx/html;
+      index index.html;
+      access_log /dev/stdout combined;
+      error_log /dev/stderr warn;
+      location / {
+      }
+    }

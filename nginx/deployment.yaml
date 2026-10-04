@@ -22,7 +22,20 @@ spec:
             - name: html
               mountPath: /usr/share/nginx/html
               readOnly: true
+            - name: config
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
       volumes:
         - name: html
           configMap:
             name: nginx-files
+            items: 
+              - key: index.html
+                path:   index.html
+        - name: config
+          configMap:
+            name: nginx-files
+            items:
+              - key: default.conf
+                path: default.conf
+
